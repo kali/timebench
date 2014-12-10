@@ -25,26 +25,28 @@ trait StoreInterface {
 }
 
 object NotAStore extends StoreInterface {
-  val stored = Bench.metrics.counter(MetricRegistry.name(getClass(), "stored"));
   def storeValues(timestamp:Date, values:Seq[(Server,Probe,Key,Value)]) {
-    stored.inc(values.size)
   }
   def pullProbe(start:Date, stop:Date, interval:Duration, metric:String):Iterator[(Date,Server,Key,Value)] = Iterator()
 }
 
 object CollectorAgent {
   def props(store:StoreInterface):Props = Props(new CollectorAgent(store))
+  val collection = Bench.metrics.counter(MetricRegistry.name(getClass(), "collection"));
+  val collectionMS = Bench.metrics.counter(MetricRegistry.name(getClass(), "collectionMS"));
 }
 class CollectorAgent(store:StoreInterface) extends Actor {
   object Tick
   val ticker = context.system.scheduler.schedule(0 milliseconds, 10 seconds, self, Tick)
   def receive = {
     case Tick =>
-      store.storeValues(
-        new Date(),
-        for(metric <- 0 to 9 ; key <- 0 to 9)
+      val storable = for(metric <- 0 to 9 ; key <- 0 to 9)
           yield (self.path.name, "m" + metric.toString, "k" + key.toString, Math.random())
-      )
+      val before = System.currentTimeMillis
+      store.storeValues(new Date(), storable)
+      val after = System.currentTimeMillis
+      CollectorAgent.collected.inc(1)
+      CollectorAgent.collectionMS.inc(after-before)
   }
 }
 
