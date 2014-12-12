@@ -11,8 +11,8 @@ import Types._
 
 object CollectorAgent {
   def props(store:StoreInterface):Props = Props(new CollectorAgent(store))
-  val collection = Metrics.metrics.counter(MetricRegistry.name(getClass(), "collection"));
-  val collectionMS = Metrics.metrics.counter(MetricRegistry.name(getClass(), "collectionMS"));
+  val collection = Environment.metrics.counter(MetricRegistry.name(getClass(), "collection"));
+  val collectionMS = Environment.metrics.counter(MetricRegistry.name(getClass(), "collectionMS"));
 }
 class CollectorAgent(store:StoreInterface) extends Actor {
   object Tick

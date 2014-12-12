@@ -26,21 +26,15 @@ case class InfluxDBStore(hostname:String, portHttp:Int, db:String, user:String, 
 
   def pullProbe(start:Date, stop:Date, interval:Duration, metric:String):Iterator[(Date,Server,Key,Value)] = Iterator()
 
-  def startContainer(implicit docker:DockerClient) {
+  import Environment.docker
+  def startContainer {
     val image = "tutum/influxdb:latest"
     docker.pullImageCmd(image).exec()
-    docker.createContainerCmd(image).withName("influx")
+    docker.createContainerCmd(image).withName(containerName)
       .withExposedPorts(new ExposedPort(8090), new ExposedPort(8099))
       .withPortSpecs("8083:8083","8086:8086")
       .withEnv("PRE_CREATE_DB=test")
       .exec()
-    docker.startContainerCmd("influx").exec()
-  }
-  def stopContainer(implicit docker:DockerClient) {
-    try {
-      docker.removeContainerCmd("influx").withForce().withRemoveVolumes(true).exec
-    } catch {
-      case a:com.github.dockerjava.api.NotFoundException => {}
-    }
+    docker.startContainerCmd(containerName).exec()
   }
 }

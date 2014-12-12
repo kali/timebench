@@ -12,16 +12,17 @@ import scala.concurrent.duration._
 import com.codahale.metrics._
 import com.github.dockerjava.core.DockerClientBuilder
 
-object Metrics {
+object Environment {
   val metrics = new MetricRegistry
+  val dockerHost = Option(System.getenv().get("DOCKER_HOST"))
+    .getOrElse("tcp://192.168.59.103:2376").drop(6).dropRight(5)
+  val docker = DockerClientBuilder.getInstance().build()
 }
 
 object Runner {
 
-  implicit val docker = DockerClientBuilder.getInstance().build()
-
   def main(args:Array[String]) {
-    val reporter = ConsoleReporter.forRegistry(Metrics.metrics)
+    val reporter = ConsoleReporter.forRegistry(Environment.metrics)
       .convertRatesTo(TimeUnit.SECONDS)
       .convertDurationsTo(TimeUnit.MILLISECONDS)
       .build()

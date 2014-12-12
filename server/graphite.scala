@@ -12,9 +12,6 @@ import Types._
 import com.github.dockerjava.api.DockerClient
 
 case class GraphiteStore(hostname:String, portTcp:Int, portHttp:Int) extends StoreInterface {
-  def startContainer(implicit docker:DockerClient) {}
-  def stopContainer(implicit docker:DockerClient) {}
-
   def storeValues(timestamp:Date, values:Seq[(Server,Probe,Key,Value)]) {
     val s = new Socket(InetAddress.getByName(hostname), portTcp)
     val out = new PrintStream(s.getOutputStream())
@@ -25,4 +22,17 @@ case class GraphiteStore(hostname:String, portTcp:Int, portHttp:Int) extends Sto
     s.close
   }
   def pullProbe(start:Date, stop:Date, interval:Duration, metric:String):Iterator[(Date,Server,Key,Value)] = Iterator()
+
+  import Environment.docker
+  def startContainer {
+    val image = "timebench-graphite"
+    docker.buildImageCmd(new java.io.File("docker/graphite")).withTag(image).exec()
+    docker.createContainerCmd(image).withName(containerName)
+      .withPortSpecs("80:80","2003:2003","8125:8125/udp")
+      .withEnv("PRE_CREATE_DB=test")
+      .exec()
+    docker.startContainerCmd(containerName).exec()
+  }
+  def stopContainer(implicit docker:DockerClient) {}
+
 }
