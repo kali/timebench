@@ -8,6 +8,8 @@ object MyApp extends Build {
       scalaVersion := "2.11.4",
       libraryDependencies ++= Seq(
         "com.typesafe.akka" %% "akka-actor" % "2.3.7",
+        "org.scalaj" %% "scalaj-http" % "1.1.0",
+        "org.json4s" %% "json4s-jackson" % "3.2.11",
         "io.dropwizard.metrics" % "metrics-core" % "3.1.0"
       )
     ) ++ revolver)

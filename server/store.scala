@@ -30,6 +30,40 @@ object NotAStore extends StoreInterface {
   def pullProbe(start:Date, stop:Date, interval:Duration, metric:String):Iterator[(Date,Server,Key,Value)] = Iterator()
 }
 
+case class GraphiteStore(hostname:String, portTcp:Int, portHttp:Int) extends StoreInterface {
+  import java.net._
+  import java.io._
+  import scala.io._
+
+  def storeValues(timestamp:Date, values:Seq[(Server,Probe,Key,Value)]) {
+    val s = new Socket(InetAddress.getByName(hostname), portTcp)
+    val out = new PrintStream(s.getOutputStream())
+    val date = timestamp.getTime() / 1000
+    values.foreach {
+      case (s,p,k,v) => out.println(s"10sec.$s.$p.$k $v $date")
+    }
+    s.close
+  }
+  def pullProbe(start:Date, stop:Date, interval:Duration, metric:String):Iterator[(Date,Server,Key,Value)] = Iterator()
+}
+
+case class InfluxDBStore(hostname:String, portHttp:Int, db:String, user:String, pwd:String)
+    extends StoreInterface {
+  import scalaj.http._
+  import org.json4s._
+  import org.json4s.JsonDSL._
+  import org.json4s.jackson.JsonMethods._
+  val request = Http(s"http://$hostname:$portHttp/db/$db/series?u=$user&p=$pwd&time_precision=s")
+  def storeValues(timestamp:Date, values:Seq[(Server,Probe,Key,Value)]) {
+    val date = timestamp.getTime() / 1000
+    val body = ( "name" -> "test") ~
+      ("columns" -> List("time", "server", "probe", "key", "value") ) ~
+      ("points" -> values.map { case (s,p,k,v) => JArray(List(date, s, p, k ,v)) } )
+    val code = request.postData(compact(render(JArray(List(body))))).asBytes.code
+  }
+  def pullProbe(start:Date, stop:Date, interval:Duration, metric:String):Iterator[(Date,Server,Key,Value)] = Iterator()
+}
+
 object CollectorAgent {
   def props(store:StoreInterface):Props = Props(new CollectorAgent(store))
   val collection = Bench.metrics.counter(MetricRegistry.name(getClass(), "collection"));
@@ -40,13 +74,17 @@ class CollectorAgent(store:StoreInterface) extends Actor {
   val ticker = context.system.scheduler.schedule(0 milliseconds, 10 seconds, self, Tick)
   def receive = {
     case Tick =>
-      val storable = for(metric <- 0 to 9 ; key <- 0 to 9)
-          yield (self.path.name, "m" + metric.toString, "k" + key.toString, Math.random())
-      val before = System.currentTimeMillis
-      store.storeValues(new Date(), storable)
-      val after = System.currentTimeMillis
-      CollectorAgent.collected.inc(1)
-      CollectorAgent.collectionMS.inc(after-before)
+      try {
+        val storable = for(metric <- 0 to 9 ; key <- 0 to 9)
+            yield (self.path.name, "m" + metric.toString, "k" + key.toString, Math.random())
+        val before = System.currentTimeMillis
+        store.storeValues(new Date(), storable)
+        val after = System.currentTimeMillis
+        CollectorAgent.collection.inc(1)
+        CollectorAgent.collectionMS.inc(after-before)
+      } catch {
+        case e:Throwable => println("error: " + e)
+      }
   }
 }
 
@@ -76,7 +114,8 @@ object Bench {
 
     val system = ActorSystem("park")
     try {
-      val store = NotAStore
+      // val store = GraphiteStore("192.168.59.103", 2003, 80)
+      val store = InfluxDBStore("192.168.59.103", 8086, "test", "test", "test")
       (0 until SERVERS).foreach { i => system.actorOf(CollectorAgent.props(store), "server-%06d".format(i)) }
       (0 until LIVEDASHBOARDS).foreach { i => system.actorOf(DashboardingAgent.props(store,
         (0 to 8).map( i => "m" + scala.util.Random.nextInt(10))
