@@ -11,9 +11,13 @@ import Types._
 
 import com.github.dockerjava.api.DockerClient
 
-case class GraphiteStore(hostname:String, portTcp:Int, portHttp:Int) extends StoreInterface {
+object GraphiteStore {
+  val logger = org.slf4j.LoggerFactory.getLogger(classOf[GraphiteStore])
+}
+case class GraphiteStore() extends StoreInterface {
+
   def storeValues(timestamp:Date, values:Seq[(Server,Probe,Key,Value)]) {
-    val s = new Socket(InetAddress.getByName(hostname), portTcp)
+    val s = new Socket(InetAddress.getByName(Environment.dockerHost), 2003)
     val out = new PrintStream(s.getOutputStream())
     val date = timestamp.getTime() / 1000
     values.foreach {
@@ -24,17 +28,20 @@ case class GraphiteStore(hostname:String, portTcp:Int, portHttp:Int) extends Sto
   def pullProbe(start:Date, stop:Date, interval:Duration, metric:String):Iterator[(Date,Server,Key,Value)] = Iterator()
 
   import Environment.docker
-  def startContainer {
+  import com.github.dockerjava.api.model._
+  def doStartContainer {
     val image = "timebench-graphite"
     val is = docker.buildImageCmd(new java.io.File("docker/graphite")).withTag(image).exec()
-    Iterator.continually (is.read).takeWhile(-1 !=).foreach(System.out.write)
+    Iterator.continually (is.read).takeWhile(-1 !=).foreach ( GraphiteStore.logger.debug("%s", _) )
     docker.createContainerCmd(image).withName(containerName)
-      .withPortSpecs("80:80","2003:2003","8125:8125/udp")
+      .withExposedPorts(new ExposedPort(2003))
       .exec()
-    docker.startContainerCmd(containerName).exec()
-    Retry(100, 10 seconds) { () =>
-      new Socket(InetAddress.getByName(hostname), portTcp).close()
+    docker.startContainerCmd(containerName).withNetworkMode("bridge")
+      .withPortBindings(PortBinding.parse("2003:2003")).exec()
+    Retry(103, 10 seconds) { () =>
+      new Socket(InetAddress.getByName(Environment.dockerHost), 2003).close()
     }
   }
 
+  def diskDataPath = "/opt/graphite/storage/whisper"
 }

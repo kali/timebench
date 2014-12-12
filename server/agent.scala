@@ -13,6 +13,15 @@ object CollectorAgent {
   def props(store:StoreInterface):Props = Props(new CollectorAgent(store))
   val collection = Environment.metrics.counter(MetricRegistry.name(getClass(), "collection"));
   val collectionMS = Environment.metrics.counter(MetricRegistry.name(getClass(), "collectionMS"));
+  def collect(store:StoreInterface, name:String, date:Date=new Date()) {
+    val storable = for(metric <- 0 to 9 ; key <- 0 to 9)
+        yield (name, "m" + metric.toString, "k" + key.toString, Math.random())
+    val before = System.currentTimeMillis
+    store.storeValues(date, storable)
+    val after = System.currentTimeMillis
+    CollectorAgent.collection.inc(1)
+    CollectorAgent.collectionMS.inc(after-before)
+  }
 }
 class CollectorAgent(store:StoreInterface) extends Actor {
   object Tick
@@ -20,15 +29,9 @@ class CollectorAgent(store:StoreInterface) extends Actor {
   def receive = {
     case Tick =>
       try {
-        val storable = for(metric <- 0 to 9 ; key <- 0 to 9)
-            yield (self.path.name, "m" + metric.toString, "k" + key.toString, Math.random())
-        val before = System.currentTimeMillis
-        store.storeValues(new Date(), storable)
-        val after = System.currentTimeMillis
-        CollectorAgent.collection.inc(1)
-        CollectorAgent.collectionMS.inc(after-before)
+        CollectorAgent.collect(store, self.path.name)
       } catch {
-        case e:Throwable => println("error: " + e)
+        case e:Exception => println("error: " + e)
       }
   }
 }
