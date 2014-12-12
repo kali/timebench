@@ -5,12 +5,16 @@ import Types._
 import java.util.Date
 import scala.concurrent.duration._
 
+import com.github.dockerjava.api.DockerClient
+import com.github.dockerjava.api.model.ExposedPort
+
+import scalaj.http._
+import org.json4s._
+import org.json4s.JsonDSL._
+import org.json4s.jackson.JsonMethods._
+
 case class InfluxDBStore(hostname:String, portHttp:Int, db:String, user:String, pwd:String)
     extends StoreInterface {
-  import scalaj.http._
-  import org.json4s._
-  import org.json4s.JsonDSL._
-  import org.json4s.jackson.JsonMethods._
   val request = Http(s"http://$hostname:$portHttp/db/$db/series?u=$user&p=$pwd&time_precision=s")
   def storeValues(timestamp:Date, values:Seq[(Server,Probe,Key,Value)]) {
     val date = timestamp.getTime() / 1000
@@ -19,5 +23,24 @@ case class InfluxDBStore(hostname:String, portHttp:Int, db:String, user:String, 
       ("points" -> values.map { case (s,p,k,v) => JArray(List(date, s, p, k ,v)) } )
     val code = request.postData(compact(render(JArray(List(body))))).asBytes.code
   }
+
   def pullProbe(start:Date, stop:Date, interval:Duration, metric:String):Iterator[(Date,Server,Key,Value)] = Iterator()
+
+  def startContainer(implicit docker:DockerClient) {
+    val image = "tutum/influxdb:latest"
+    docker.pullImageCmd(image).exec()
+    docker.createContainerCmd(image).withName("influx")
+      .withExposedPorts(new ExposedPort(8090), new ExposedPort(8099))
+      .withPortSpecs("8083:8083","8086:8086")
+      .withEnv("PRE_CREATE_DB=test")
+      .exec()
+    docker.startContainerCmd("influx").exec()
+  }
+  def stopContainer(implicit docker:DockerClient) {
+    try {
+      docker.removeContainerCmd("influx").withForce().withRemoveVolumes(true).exec
+    } catch {
+      case a:com.github.dockerjava.api.NotFoundException => {}
+    }
+  }
 }

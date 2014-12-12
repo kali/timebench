@@ -10,6 +10,7 @@ object MyApp extends Build {
         "com.typesafe.akka" %% "akka-actor" % "2.3.7",
         "org.scalaj" %% "scalaj-http" % "1.1.0",
         "org.json4s" %% "json4s-jackson" % "3.2.11",
+        "com.github.docker-java" % "docker-java" % "0.10.3",
         "io.dropwizard.metrics" % "metrics-core" % "3.1.0"
       )
     ) ++ revolver)

@@ -10,12 +10,15 @@ import java.util.concurrent.TimeUnit
 
 import scala.concurrent.duration._
 import com.codahale.metrics._
+import com.github.dockerjava.core.DockerClientBuilder
 
 object Metrics {
   val metrics = new MetricRegistry
 }
 
 object Runner {
+
+  implicit val docker = DockerClientBuilder.getInstance().build()
 
   def main(args:Array[String]) {
     val reporter = ConsoleReporter.forRegistry(Metrics.metrics)

@@ -9,7 +9,11 @@ import scala.concurrent.duration._
 
 import Types._
 
+import com.github.dockerjava.api.DockerClient
+
 case class GraphiteStore(hostname:String, portTcp:Int, portHttp:Int) extends StoreInterface {
+  def startContainer(implicit docker:DockerClient) {}
+  def stopContainer(implicit docker:DockerClient) {}
 
   def storeValues(timestamp:Date, values:Seq[(Server,Probe,Key,Value)]) {
     val s = new Socket(InetAddress.getByName(hostname), portTcp)
