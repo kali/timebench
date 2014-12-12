@@ -49,9 +49,10 @@ object Runner {
     org.slf4j.bridge.SLF4JBridgeHandler.install()
     val store = InfluxDBStore()
     //val store = NotAStore
+    logger.info("du bench")
     List(InfluxDBStore(), GraphiteStore(), NotAStore).foreach { store =>
       store.startContainer
-      logger.info { "%20s\t%d".format(store.containerName, duFor1week1server(store)) }
+      logger.info { "%20s\t% 20d".format(store.containerName, duFor1week1server(store)) }
       store.stopContainer
     }
   }
