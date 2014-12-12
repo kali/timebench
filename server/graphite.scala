@@ -26,13 +26,15 @@ case class GraphiteStore(hostname:String, portTcp:Int, portHttp:Int) extends Sto
   import Environment.docker
   def startContainer {
     val image = "timebench-graphite"
-    docker.buildImageCmd(new java.io.File("docker/graphite")).withTag(image).exec()
+    val is = docker.buildImageCmd(new java.io.File("docker/graphite")).withTag(image).exec()
+    Iterator.continually (is.read).takeWhile(-1 !=).foreach(System.out.write)
     docker.createContainerCmd(image).withName(containerName)
       .withPortSpecs("80:80","2003:2003","8125:8125/udp")
-      .withEnv("PRE_CREATE_DB=test")
       .exec()
     docker.startContainerCmd(containerName).exec()
+    Retry(100, 10 seconds) { () =>
+      new Socket(InetAddress.getByName(hostname), portTcp).close()
+    }
   }
-  def stopContainer(implicit docker:DockerClient) {}
 
 }

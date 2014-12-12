@@ -28,7 +28,7 @@ trait StoreInterface {
       case a:com.github.dockerjava.api.NotFoundException => {}
     }
   }
-  def containerName:String = this.getClass().getName
+  def containerName:String = this.getClass().getSimpleName.toLowerCase
 
   def storeValues(timestamp:Date, values:Seq[(Server,Probe,Key,Value)])
   def pullProbe(start:Date, stop:Date, interval:Duration, metric:Probe):Iterator[(Date,Server,Key,Value)]
@@ -42,4 +42,18 @@ object NotAStore extends StoreInterface {
   def startContainer {}
 }
 
-
+object Retry {
+  def apply[T](times:Int, pause:Duration)(what:(() => T)):T = {
+    (0 until times).foreach { i =>
+      try {
+        return what()
+      } catch {
+        case t:Throwable => {
+          println(t)
+          Thread.sleep(pause.toMillis)
+        }
+      }
+    }
+    what()
+  }
+}
