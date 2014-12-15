@@ -6,7 +6,7 @@ object MyApp extends Build {
   lazy val root =
     Project("root", file("."), settings=(List(
       scalaVersion := "2.11.4",
-      initialCommands in console := """import bench._""",
+      initialCommands in console := """import bench._; import java.util.Date;""",
       managedResources in Compile += file("logback.xml"),
       libraryDependencies ++= Seq(
         "com.typesafe.akka" %% "akka-actor" % "2.3.7",
