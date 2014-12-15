@@ -34,10 +34,10 @@ trait StoreInterface {
       case a:com.github.dockerjava.api.NotFoundException => {}
     }
   }
-  def containerName:String = this.getClass().getSimpleName.toLowerCase
+  def containerName:String = this.getClass().getSimpleName.replaceAllLiterally("$","").toLowerCase
 
   def storeValues(timestamp:Date, values:Seq[(Server,Probe,Key,Value)])
-  def pullProbe(start:Date, stop:Date, interval:Duration, metric:Probe):Iterator[(Date,Server,Key,Value)]
+  def pullProbe(start:Date, stop:Date, metric:Probe):List[(Date,Server,Key,Value)]
 
   def exec(cmd:String):String = s"docker exec $containerName $cmd" !!
   def diskDataPath:String
@@ -47,7 +47,7 @@ trait StoreInterface {
 object NotAStore extends StoreInterface {
   def storeValues(timestamp:Date, values:Seq[(Server,Probe,Key,Value)]) {
   }
-  def pullProbe(start:Date, stop:Date, interval:Duration, metric:String):Iterator[(Date,Server,Key,Value)] = Iterator()
+  def pullProbe(start:Date, stop:Date, metric:String):List[(Date,Server,Key,Value)] = List()
   def doStartContainer {}
   def diskDataPath:String = ""
   override def diskUsage = 0

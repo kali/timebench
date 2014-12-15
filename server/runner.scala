@@ -47,10 +47,10 @@ object Runner {
   def main(args:Array[String]) {
     org.slf4j.bridge.SLF4JBridgeHandler.removeHandlersForRootLogger()
     org.slf4j.bridge.SLF4JBridgeHandler.install()
-    val store = InfluxDBStore()
+    val store = InfluxDBStore
     //val store = NotAStore
     logger.info("du bench")
-    List(InfluxDBStore(), GraphiteStore(), NotAStore).foreach { store =>
+    List(InfluxDBStore, GraphiteStore, NotAStore).foreach { store =>
       store.startContainer
       logger.info { "%20s\t% 20d".format(store.containerName, duFor1week1server(store)) }
       store.stopContainer
@@ -66,7 +66,7 @@ object Runner {
   }
 
   def feed(store:StoreInterface, from:Long, to:Long, n:Int) {
-    (from to to by (10 seconds).toMillis).foreach { ts =>
+    (from until to by (10 seconds).toMillis).foreach { ts =>
         Retry(1, 5 seconds) { () =>
           CollectorAgent.collect(store, "duByTime", new Date(ts))
       }
@@ -80,7 +80,7 @@ object Runner {
 
     val system = ActorSystem("park")
 //val store = GraphiteStore()
-    val store = InfluxDBStore()
+    val store = InfluxDBStore
     try {
       store.startContainer
       (0 until SERVERS).foreach { i => system.actorOf(CollectorAgent.props(store), "server-%06d".format(i)) }

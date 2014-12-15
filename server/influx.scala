@@ -13,7 +13,7 @@ import org.json4s._
 import org.json4s.JsonDSL._
 import org.json4s.jackson.JsonMethods._
 
-case class InfluxDBStore() extends StoreInterface {
+object InfluxDBStore extends StoreInterface {
   def hostname = Environment.dockerHost
 
   val request = Http(s"http://$hostname:8086/db/test/series?u=test&p=test&time_precision=s")
@@ -25,7 +25,7 @@ case class InfluxDBStore() extends StoreInterface {
     val code = request.postData(compact(render(JArray(List(body))))).asBytes.code
   }
 
-  def pullProbe(start:Date, stop:Date, interval:Duration, metric:String):Iterator[(Date,Server,Key,Value)] = Iterator()
+  def pullProbe(start:Date, stop:Date, metric:String):List[(Date,Server,Key,Value)] = List()
 
   import Environment.docker
   import com.github.dockerjava.api.model._

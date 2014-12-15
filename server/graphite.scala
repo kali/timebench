@@ -11,10 +11,8 @@ import Types._
 
 import com.github.dockerjava.api.DockerClient
 
-object GraphiteStore {
-  val logger = org.slf4j.LoggerFactory.getLogger(classOf[GraphiteStore])
-}
-case class GraphiteStore() extends StoreInterface {
+object GraphiteStore extends StoreInterface {
+  val logger = org.slf4j.LoggerFactory.getLogger(this.getClass)
 
   def storeValues(timestamp:Date, values:Seq[(Server,Probe,Key,Value)]) {
     val s = new Socket(InetAddress.getByName(Environment.dockerHost), 2003)
@@ -25,7 +23,8 @@ case class GraphiteStore() extends StoreInterface {
     }
     s.close
   }
-  def pullProbe(start:Date, stop:Date, interval:Duration, metric:String):Iterator[(Date,Server,Key,Value)] = Iterator()
+
+  def pullProbe(start:Date, stop:Date, metric:String):List[(Date,Server,Key,Value)] = List()
 
   import Environment.docker
   import com.github.dockerjava.api.model._
