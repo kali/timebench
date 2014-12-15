@@ -33,11 +33,9 @@ object InfluxDBStore extends StoreInterface {
                     .format(dateFormat.format(start.getTime()),
                             dateFormat.format(stop.getTime()), probe))
       .method("GET")
-    println(req)
     val resp = parse(StringInput(req.asString.body))
     if(resp.values.asInstanceOf[List[_]].size == 0)
       return List()
-println(resp)
     val columns = (resp(0) \ "columns").values.asInstanceOf[List[_]]
     val iTime = columns.indexOf("time")
     val iServer = columns.indexOf("server")
