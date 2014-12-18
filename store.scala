@@ -22,6 +22,7 @@ object Types {
 import Types._
 
 trait StoreInterface {
+  val logger = org.slf4j.LoggerFactory.getLogger(this.getClass)
   def startContainer {
     stopContainer
     doStartContainer

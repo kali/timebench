@@ -33,18 +33,21 @@ abstract class MongoDBContainer extends StoreInterface {
 }
 
 trait MongoDBFlatStorage {
+  def logger:org.slf4j.Logger
   def collection:MongoCollection
   def storeValues(timestamp:Date, values:Seq[(Server,Probe,Key,Value)]) {
     collection.insert(values.map {
       case (s,p,k,v) => MongoDBObject("s" -> s, "t" -> timestamp, "p" -> p, "k" -> k, "v" -> v)
     }:_*)
   }
-  def pullProbe(start:Date, stop:Date, probe:Probe):List[(Date,Server,Key,Value)] =
-    collection.find(MongoDBObject(  "t" -> MongoDBObject("$lt" -> stop, "$gte" -> start),
-                                    "p" -> probe),
-                    MongoDBObject("t" -> 1, "s" -> 1, "k" -> 1, "v" -> 1))
+  def pullProbe(start:Date, stop:Date, probe:Probe):List[(Date,Server,Key,Value)] = {
+    val query = MongoDBObject(  "t" -> MongoDBObject("$lt" -> stop, "$gte" -> start),
+                                    "p" -> probe)
+    logger.debug("query: " + query)
+    collection.find(query, MongoDBObject("t" -> 1, "s" -> 1, "k" -> 1, "v" -> 1))
       .map{ doc => (doc.getAs[Date]("t").get,doc.getAs[Server]("s").get,
                     doc.getAs[Key]("k").get,doc.getAs[Double]("v").get) }.toList
+  }
 }
 
 case object NaiveMongoDBStore extends MongoDBContainer with MongoDBFlatStorage {

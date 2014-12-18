@@ -30,12 +30,16 @@ object InfluxDBStore extends StoreInterface {
   def pullProbe(start:Date, stop:Date, probe:Probe):List[(Date,Server,Key,Value)] = {
     val req = request
         .param("q", "select time,server,key,value from test where time > '%s' and time < '%s' and probe = '%s'"
-                    .format(dateFormat.format(start.getTime()),
-                            dateFormat.format(stop.getTime()), probe))
+                    .format(dateFormat.format(start),
+                            dateFormat.format(stop), probe))
       .method("GET")
+    logger.debug { "start:" + start + " -> " + dateFormat.format(start) }
+    logger.debug { "stop :" + stop  + " -> " + dateFormat.format(stop) }
+    logger.debug { s"query:$req" }
     val resp = parse(StringInput(req.asString.body))
     if(resp.values.asInstanceOf[List[_]].size == 0)
       return List()
+    logger.debug { " --- > " + resp.values.asInstanceOf[List[_]].size }
     val columns = (resp(0) \ "columns").values.asInstanceOf[List[_]]
     val iTime = columns.indexOf("time")
     val iServer = columns.indexOf("server")

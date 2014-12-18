@@ -17,6 +17,8 @@ import org.slf4j.LoggerFactory;
 import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.core.util.StatusPrinter;
 
+
+
 object Environment {
   val lc = LoggerFactory.getILoggerFactory().asInstanceOf[LoggerContext]
 
@@ -26,14 +28,12 @@ object Environment {
   val docker = DockerClientBuilder.getInstance().build()
   val dateFormat = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm'Z'")
   dateFormat.setTimeZone(java.util.TimeZone.getTimeZone("UTC"))
-
-  val csvDir = new java.io.File("target/metrics/"+dateFormat.format(new Date()))
+  val csvDir = new java.io.File("target/metrics/")
   csvDir.mkdirs()
   val reporter = CsvReporter.forRegistry(Environment.metrics)
     .convertRatesTo(TimeUnit.SECONDS)
     .convertDurationsTo(TimeUnit.MILLISECONDS)
     .build(csvDir)
-
   reporter.start(1, TimeUnit.SECONDS)
   def close() {
     reporter.stop()
@@ -49,28 +49,54 @@ object Runner {
     org.slf4j.bridge.SLF4JBridgeHandler.install()
     val store = InfluxDBStore
     //val store = NotAStore
-    logger.info("du bench")
-    List(InfluxDBStore, GraphiteStore, NotAStore).foreach { store =>
+    List(
+      InfluxDBStore,
+      IndexedMongoDBStore,
+      GraphiteStore,
+      NotAStore
+    ).foreach { store =>
       store.startContainer
-      logger.info { "%20s\t% 20d".format(store.containerName, duFor1week1server(store)) }
+      liveDashboardBench(store, 1, false)
       store.stopContainer
     }
   }
 
-  // 1 machine, 1 week of data
   def duFor1week1server(store:StoreInterface):Long = {
-    val oneWeekAgo:Long = ((System.currentTimeMillis - (7 day).toMillis) / (1 day).toMillis).toLong * (1 day).toMillis
     val yesterday:Long = oneWeekAgo + (7 days).toMillis
-    feed(store, oneWeekAgo, yesterday, 1)
+    feed(store, oneWeekAgo, yesterday, "s")
     store.diskUsage
   }
+  def oneWeekAgo:Long = ((System.currentTimeMillis - (7 day).toMillis) / (1 day).toMillis).toLong * (1 day).toMillis
+  def oneDayAgo:Long = ((System.currentTimeMillis - (1 day).toMillis) / (1 day).toMillis).toLong * (1 day).toMillis
+  def now:Long = System.currentTimeMillis
 
-  def feed(store:StoreInterface, from:Long, to:Long, n:Int) {
+  def feed(store:StoreInterface, from:Long, to:Long, name:String) {
     (from until to by (10 seconds).toMillis).foreach { ts =>
         Retry(1, 5 seconds) { () =>
-          CollectorAgent.collect(store, "duByTime", new Date(ts))
+          CollectorAgent.collect(store, name, new Date(ts))
       }
     }
+  }
+
+  def liveDashboardBench(store:StoreInterface, servers:Int, fast:Boolean=false) {
+    logger.info(s"feeding $store for dashboard bench with $servers servers")
+    val system = ActorSystem("live")
+    val epoch = if(fast) oneDayAgo else oneWeekAgo
+    (1 to servers).foreach { i =>
+      val start = System.currentTimeMillis
+      feed(store, epoch, now, "server-%06d".format(i))
+      val time = System.currentTimeMillis - start
+      logger.info(s"fed server $i in $time ms")
+      system.actorOf(CollectorAgent.props(store), "server-%06d".format(i))
+    }
+    DashboardingAgent.reset
+    AuditingAgent.reset
+    system.actorOf(DashboardingAgent.props(store, List("m3")))
+    system.actorOf(AuditingAgent.props(store, epoch, List("m3")))
+    Thread.sleep((if(fast) 30 seconds else 5 minutes).toMillis)
+    system.shutdown
+    logger.info(store + " average dashboard query time: " + DashboardingAgent.averageQueryTime + "ms, points:" + DashboardingAgent.resultCount.getCount)
+    logger.info(store + " average audit query time: " + AuditingAgent.averageQueryTime + "ms, points:" + AuditingAgent.resultCount.getCount)
   }
 
   def load(args:Array[String]) {

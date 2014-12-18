@@ -17,7 +17,6 @@ import org.json4s.JsonDSL._
 import org.json4s.jackson.JsonMethods._
 
 object GraphiteStore extends StoreInterface {
-  val logger = org.slf4j.LoggerFactory.getLogger(this.getClass)
   val url = "http://" + Environment.dockerHost
   val dateFormat = new java.text.SimpleDateFormat("HH:mm'_'yyyyMMdd")
   dateFormat.setTimeZone(java.util.TimeZone.getTimeZone("UTC"))
@@ -33,8 +32,13 @@ object GraphiteStore extends StoreInterface {
   }
 
   def pullProbe(start:Date, stop:Date, metric:String):List[(Date,Server,Key,Value)] = {
-    val req = Http(url + "/render").params("from" -> dateFormat.format(start), "until" -> dateFormat.format(stop),
-      "target" -> "10sec.*.*.*", "format" -> "json")
+    val req = Http(url + "/render")
+        .params(
+          "from" -> dateFormat.format(start),
+          "until" -> dateFormat.format(stop),
+          "target" -> s"10sec.*.$metric.*",
+          "format" -> "json")
+    logger.debug("query: " + req)
     val resp = parse(StringInput(req.asString.body))
     resp.asInstanceOf[JArray].values.flatMap {
       case obj:Map[String,_] =>
@@ -51,7 +55,7 @@ object GraphiteStore extends StoreInterface {
   def doStartContainer {
     val image = "timebench-graphite"
     val is = docker.buildImageCmd(new java.io.File("docker/graphite")).withTag(image).exec()
-    Iterator.continually (is.read).takeWhile(-1 !=).foreach ( GraphiteStore.logger.debug("%s", _) )
+    Iterator.continually (is.read).takeWhile(-1 !=).foreach( a => () )
     docker.createContainerCmd(image).withName(containerName)
       .withExposedPorts(new ExposedPort(2003), new ExposedPort(80))
       .exec()
