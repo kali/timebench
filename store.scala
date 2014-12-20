@@ -61,6 +61,7 @@ object Retry {
         return what()
       } catch {
         case t:Exception => {
+          println(t.toString)
           Thread.sleep(pause.toMillis)
         }
       }
