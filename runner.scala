@@ -50,13 +50,14 @@ object Runner {
     val store = InfluxDBStore
     //val store = NotAStore
     List(
+      MysqlStore,
       InfluxDBStore,
       IndexedMongoDBStore,
       GraphiteStore,
       NotAStore
     ).foreach { store =>
       store.startContainer
-      liveDashboardBench(store, 1, false)
+      liveDashboardBench(store, 1, true)
       store.stopContainer
     }
   }
@@ -86,7 +87,7 @@ object Runner {
       val start = System.currentTimeMillis
       feed(store, epoch, now, "server-%06d".format(i))
       val time = System.currentTimeMillis - start
-      logger.info(s"fed server $i in $time ms")
+      logger.info(s"fed server $i in $time ms du: " + store.diskUsage)
       system.actorOf(CollectorAgent.props(store), "server-%06d".format(i))
     }
     DashboardingAgent.reset

@@ -18,6 +18,9 @@ object MyApp extends Build {
         "ch.qos.logback" % "logback-classic" % "1.1.2",
         "com.github.docker-java" % "docker-java" % "0.10.4",
         "org.mongodb" % "casbah-core_2.11" % "2.7.4",
+        "mysql" % "mysql-connector-java" % "5.1.34",
+        "org.apache.commons" % "commons-dbcp2" % "2.0.1",
+        "org.apache.commons" % "commons-pool2" % "2.2",
         "io.dropwizard.metrics" % "metrics-core" % "3.1.0"
       )
     ) ++ revolver)
