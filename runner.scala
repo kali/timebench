@@ -23,8 +23,10 @@ object Environment {
   val lc = LoggerFactory.getILoggerFactory().asInstanceOf[LoggerContext]
 
   val metrics = new MetricRegistry
-  val dockerHost = Option(System.getenv().get("DOCKER_HOST"))
-    .getOrElse("tcp://192.168.59.103:2376").drop(6).dropRight(5)
+  val dockerHost =
+		Option(System.getenv().get("DOCKER_HOST")).map( d => d.drop(6).dropRight(5) )
+	.orElse(Option(System.getenv().get("DOCKER_URL"))).map( d => d.drop(7).dropRight(5) )
+    	.getOrElse("192.168.59.103")
   val docker = DockerClientBuilder.getInstance().build()
   val dateFormat = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm'Z'")
   dateFormat.setTimeZone(java.util.TimeZone.getTimeZone("UTC"))

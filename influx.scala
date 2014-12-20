@@ -54,7 +54,7 @@ object InfluxDBStore extends StoreInterface {
   import Environment.docker
   import com.github.dockerjava.api.model._
   def doStartContainer {
-    val image = "tutum/influxdb:latest"
+    val image = "tutum/influxdb"
     docker.pullImageCmd(image).exec()
     docker.createContainerCmd(image).withName(containerName)
       .withExposedPorts(new ExposedPort(8090), new ExposedPort(8099))

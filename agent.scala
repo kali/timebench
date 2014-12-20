@@ -28,7 +28,7 @@ trait QueryProfiling {
     queryCount.dec(queryCount.getCount)
     resultCount.dec(resultCount.getCount)
   }
-  def averageQueryTime = queryElapsed.getCount / queryCount.getCount
+  def averageQueryTime = if(queryCount.getCount > 0) queryElapsed.getCount / queryCount.getCount else 999999
 }
 
 object CollectorAgent extends QueryProfiling {
@@ -42,12 +42,13 @@ object CollectorAgent extends QueryProfiling {
 class CollectorAgent(store:StoreInterface) extends Actor {
   object Tick
   val ticker = context.system.scheduler.schedule(0 milliseconds, 10 seconds, self, Tick)
+  val logger = org.slf4j.LoggerFactory.getLogger(this.getClass)
   def receive = {
     case Tick =>
       try {
         CollectorAgent.collect(store, self.path.name)
       } catch {
-        case e:Exception => println("error: " + e)
+        case e:Exception => logger.warn(e.toString)
       }
   }
 }
@@ -55,6 +56,7 @@ class CollectorAgent(store:StoreInterface) extends Actor {
 abstract class QueryAgent(store:StoreInterface, pick:Seq[Probe]) extends Actor {
   object Tick
   val ticker = context.system.scheduler.schedule(0 milliseconds, 15 seconds, self, Tick)
+  val logger = org.slf4j.LoggerFactory.getLogger(this.getClass)
   def collector:QueryProfiling
   def receive = {
     case Tick => {
@@ -66,7 +68,7 @@ abstract class QueryAgent(store:StoreInterface, pick:Seq[Probe]) extends Actor {
           }
         )
       } catch {
-        case e:Exception => println("error: " + e)
+        case e:Exception => logger.warn(e.toString)
       }
     }
   }
