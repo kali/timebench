@@ -75,7 +75,7 @@ object Runner {
 
   def feed(store:StoreInterface, from:Long, to:Long, name:String) {
     (from until to by (10 seconds).toMillis).foreach { ts =>
-        Retry(1, 5 seconds) { () =>
+        Retry(30, 1 seconds) { () =>
           CollectorAgent.collect(store, name, new Date(ts))
       }
     }
