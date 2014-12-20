@@ -24,8 +24,7 @@ object Environment {
 
   val metrics = new MetricRegistry
   val dockerHost =
-		Option(System.getenv().get("DOCKER_HOST")).map( d => d.drop(6).dropRight(5) )
-	.orElse(Option(System.getenv().get("DOCKER_URL")).map( d => d.drop(7).dropRight(5) ))
+	Option(System.getenv().get("DOCKER_HOST")).map( d => d.drop(6).dropRight(5) )
     	.getOrElse("127.0.0.1")
   val docker = DockerClientBuilder.getInstance().build()
   val dateFormat = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm'Z'")
