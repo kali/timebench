@@ -22,7 +22,6 @@ object GraphiteStore extends StoreInterface {
   dateFormat.setTimeZone(java.util.TimeZone.getTimeZone("UTC"))
 
   def storeValues(timestamp:Date, values:Seq[(Server,Probe,Key,Value)]) {
-    println(s"storing values for $timestamp...")
     val s = new Socket(InetAddress.getByName(Environment.dockerHost), 2003)
     val out = new PrintStream(s.getOutputStream())
     val date = timestamp.getTime() / 1000
@@ -30,7 +29,6 @@ object GraphiteStore extends StoreInterface {
       case (s,p,k,v) => out.println(s"10sec.$s.$p.$k $v $date")
     }
     s.close
-    println(s"stored values for $timestamp")
   }
 
   def pullProbe(start:Date, stop:Date, metric:String):List[(Date,Server,Key,Value)] = {
