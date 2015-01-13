@@ -76,11 +76,26 @@ object Runner {
   def now:Long = System.currentTimeMillis
 
   def feed(store:StoreInterface, from:Long, to:Long, names:Seq[String]) {
+    var lastMinute = System.currentTimeMillis / 1000 / 60
+    var started = System.currentTimeMillis
     (from until to by (10 seconds).toMillis).foreach { ts =>
       names.par.foreach { name =>
         Retry(30, 1 seconds) { () =>
           CollectorAgent.collect(store, name, new Date(ts))
         }
+      }
+      var currentMinute = System.currentTimeMillis / 1000 / 60
+      if(currentMinute != lastMinute) {
+        val done = (ts - from).toFloat / (to - from).toFloat
+        val percent = (100*done).toInt
+        val eta = if(done > 0.00001) {
+          val time = ((System.currentTimeMillis - started) / done).toLong
+          new Date(started + time).toString
+        } else {
+          "..."
+        }
+        logger.info(s"loaded: $percent% eta:$eta")
+        lastMinute = currentMinute
       }
     }
   }
