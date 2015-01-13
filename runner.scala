@@ -86,7 +86,7 @@ object Runner {
   }
 
   def liveDashboardBench(store:StoreInterface, servers:Int, dayCount:Int, plateauTime:Long) {
-    logger.info(s"feeding $store for dashboard bench with $servers servers")
+    logger.info(s"store:$store servers:$servers days:$dayCount plateau:" + plateauTime / 1000 + "s")
     val system = ActorSystem("live")
     val epoch = ((System.currentTimeMillis - (dayCount day).toMillis) / (1 day).toMillis).toLong * (1 day).toMillis
     val start = System.currentTimeMillis
