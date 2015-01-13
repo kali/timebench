@@ -55,13 +55,14 @@ object NotAStore extends StoreInterface {
 }
 
 object Retry {
+  val logger = org.slf4j.LoggerFactory.getLogger(this.getClass)
   def apply[T](times:Int, pause:Duration)(what:(() => T)):T = {
     (0 until times).foreach { i =>
       try {
         return what()
       } catch {
         case t:Exception => {
-          println(t.toString)
+          logger.println(t.toString)
           Thread.sleep(pause.toMillis)
         }
       }

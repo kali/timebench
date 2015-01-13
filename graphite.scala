@@ -16,19 +16,40 @@ import org.json4s._
 import org.json4s.JsonDSL._
 import org.json4s.jackson.JsonMethods._
 
+import org.apache.commons.pool2._
+
 object GraphiteStore extends StoreInterface {
   val url = "http://" + Environment.dockerHost
   val dateFormat = new java.text.SimpleDateFormat("HH:mm'_'yyyyMMdd")
   dateFormat.setTimeZone(java.util.TimeZone.getTimeZone("UTC"))
 
-  def storeValues(timestamp:Date, values:Seq[(Server,Probe,Key,Value)]) {
-    val s = new Socket(InetAddress.getByName(Environment.dockerHost), 2003)
-    val out = new PrintStream(s.getOutputStream())
-    val date = timestamp.getTime() / 1000
-    values.foreach {
-      case (s,p,k,v) => out.println(s"10sec.$s.$p.$k $v $date")
+  val factory:PooledObjectFactory[Socket] = new PooledObjectFactory[Socket] {
+    def activateObject(x:PooledObject[Socket]): Unit = {}
+    def destroyObject(x:PooledObject[Socket]): Unit = x.getObject.close
+    def makeObject():PooledObject[Socket] = {
+      new org.apache.commons.pool2.impl.DefaultPooledObject(
+        new Socket(InetAddress.getByName(Environment.dockerHost), 2003)
+      )
     }
-    s.close
+    def passivateObject(x:PooledObject[Socket]): Unit = {}
+    def validateObject(x:PooledObject[Socket]): Boolean = x.getObject.isConnected
+  }
+
+  var pool:ObjectPool[Socket] = null
+
+  def withSocket[T](f:Socket => T) {
+    val s = pool.borrowObject
+    try { f(s) } finally { if(s!=null) pool.returnObject(s) }
+  }
+
+  def storeValues(timestamp:Date, values:Seq[(Server,Probe,Key,Value)]) {
+    withSocket { s =>
+      val out = new PrintStream(s.getOutputStream())
+      val date = timestamp.getTime() / 1000
+      values.foreach {
+        case (s,p,k,v) => out.println(s"10sec.$s.$p.$k $v $date")
+      }
+    }
   }
 
   def pullProbe(start:Date, stop:Date, metric:String):List[(Date,Server,Key,Value)] = {
@@ -64,7 +85,17 @@ object GraphiteStore extends StoreInterface {
     Retry(103, 10 seconds) { () =>
       new Socket(InetAddress.getByName(Environment.dockerHost), 2003).close()
     }
+    pool = new org.apache.commons.pool2.impl.GenericObjectPool(factory)
+  }
+
+  override def stopContainer = {
+    if(pool != null) {
+      pool.close
+      pool = null
+    }
+    super.stopContainer
   }
 
   def diskDataPath = "/opt/graphite/storage/whisper"
+
 }
