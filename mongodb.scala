@@ -25,11 +25,16 @@ abstract class MongoDBContainer extends StoreInterface {
       .exec()
     docker.startContainerCmd(containerName).withNetworkMode("bridge")
       .withPortBindings(PortBinding.parse("27017:27017"),PortBinding.parse("28017:28017")).exec()
-    Retry(30, 1 second) { () => Http(s"http://$hostname:28017/").asString }
+    Retry(60, 3 second) { () => Http(s"http://$hostname:28017/").asString }
   }
 
   def diskDataPath = "/data"
-  val client = MongoConnection(Environment.dockerHost)
+  var client = MongoConnection(Environment.dockerHost)
+  override def stopContainer {
+    client.close
+    client = MongoConnection(Environment.dockerHost)
+    super.stopContainer
+  }
 }
 
 trait MongoDBFlatStorage {

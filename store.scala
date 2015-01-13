@@ -13,6 +13,8 @@ import scala.sys.process._
 
 import scala.concurrent.duration._
 
+import org.slf4j.Logger
+
 object Types {
   type Server = String
   type Probe = String
@@ -25,7 +27,9 @@ trait StoreInterface {
   val logger = org.slf4j.LoggerFactory.getLogger(this.getClass)
   def startContainer {
     stopContainer
+    logger.info("starting")
     doStartContainer
+    logger.info("started")
   }
   def doStartContainer
   def stopContainer {
@@ -56,13 +60,14 @@ object NotAStore extends StoreInterface {
 
 object Retry {
   val logger = org.slf4j.LoggerFactory.getLogger(this.getClass)
-  def apply[T](times:Int, pause:Duration)(what:(() => T)):T = {
+  def apply[T](times:Int, pause:Duration, log:Logger=logger)(what:(() => T)):T = {
     (0 until times).foreach { i =>
       try {
         return what()
       } catch {
         case t:Exception => {
-          logger.println(t.toString)
+          log.info(t.toString)
+          log.info("will retry in " + pause + "ms")
           Thread.sleep(pause.toMillis)
         }
       }

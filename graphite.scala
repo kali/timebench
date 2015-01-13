@@ -78,11 +78,12 @@ object GraphiteStore extends StoreInterface {
     val is = docker.buildImageCmd(new java.io.File("docker/graphite")).withTag(image).exec()
     Iterator.continually (is.read).takeWhile(-1 !=).foreach( a => () )
     docker.createContainerCmd(image).withName(containerName)
-      .withExposedPorts(new ExposedPort(2003), new ExposedPort(80))
+      .withExposedPorts(new ExposedPort(2003), new ExposedPort(80), new ExposedPort(8080))
       .exec()
     docker.startContainerCmd(containerName).withNetworkMode("bridge")
-      .withPortBindings(PortBinding.parse("2003:2003"), PortBinding.parse("80:80")).exec()
-    Retry(103, 10 seconds) { () =>
+      .withPortBindings(PortBinding.parse("2003:2003"), PortBinding.parse("80:80"), PortBinding.parse("8080:8080")).exec()
+    Retry(103, 10 seconds,logger) { () =>
+      logger.info("dockerhost is " + Environment.dockerHost)
       new Socket(InetAddress.getByName(Environment.dockerHost), 2003).close()
     }
     pool = new org.apache.commons.pool2.impl.GenericObjectPool(factory)
