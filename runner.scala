@@ -48,6 +48,9 @@ object Runner {
     org.slf4j.bridge.SLF4JBridgeHandler.removeHandlersForRootLogger()
     org.slf4j.bridge.SLF4JBridgeHandler.install()
     logger.info("starting bench. docker host: " + Environment.dockerHost)
+    val scount:Int = Option(System.getenv("SERVERS")).map( _.toInt ).getOrElse(2)
+    val dayCount:Int = Option(System.getenv("DAYS")).map( _.toInt ).getOrElse(1)
+    val plateauTime:Long = Option(System.getenv("PLATEAU")).map( _.toInt ).getOrElse(30) * 1000
     val store = InfluxDBStore
     //val store = NotAStore
     List(
@@ -58,44 +61,47 @@ object Runner {
       NotAStore
     ).foreach { store =>
       store.startContainer
-      liveDashboardBench(store, 1, true)
+      liveDashboardBench(store, scount, dayCount, plateauTime)
       store.stopContainer
     }
   }
 
   def duFor1week1server(store:StoreInterface):Long = {
     val yesterday:Long = oneWeekAgo + (7 days).toMillis
-    feed(store, oneWeekAgo, yesterday, "s")
+    feed(store, oneWeekAgo, yesterday, List("s"))
     store.diskUsage
   }
   def oneWeekAgo:Long = ((System.currentTimeMillis - (7 day).toMillis) / (1 day).toMillis).toLong * (1 day).toMillis
   def oneDayAgo:Long = ((System.currentTimeMillis - (1 day).toMillis) / (1 day).toMillis).toLong * (1 day).toMillis
   def now:Long = System.currentTimeMillis
 
-  def feed(store:StoreInterface, from:Long, to:Long, name:String) {
+  def feed(store:StoreInterface, from:Long, to:Long, names:Seq[String]) {
     (from until to by (10 seconds).toMillis).foreach { ts =>
+      names.par.foreach { name =>
         Retry(30, 1 seconds) { () =>
           CollectorAgent.collect(store, name, new Date(ts))
+        }
       }
     }
   }
 
-  def liveDashboardBench(store:StoreInterface, servers:Int, fast:Boolean=false) {
+  def liveDashboardBench(store:StoreInterface, servers:Int, dayCount:Int, plateauTime:Long) {
     logger.info(s"feeding $store for dashboard bench with $servers servers")
     val system = ActorSystem("live")
-    val epoch = if(fast) oneDayAgo else oneWeekAgo
+    val epoch = ((System.currentTimeMillis - (dayCount day).toMillis) / (1 day).toMillis).toLong * (1 day).toMillis
+    val start = System.currentTimeMillis
+    feed(store, epoch, now, (1 to servers).map ( i => "server-%06d".format(i)) )
+    val time = System.currentTimeMillis - start
+    logger.info(s"fed $servers server in " + (time/1000)+s"s du: " + store.diskUsage)
     (1 to servers).foreach { i =>
-      val start = System.currentTimeMillis
-      feed(store, epoch, now, "server-%06d".format(i))
-      val time = System.currentTimeMillis - start
-      logger.info(s"fed server $i in $time ms du: " + store.diskUsage)
       system.actorOf(CollectorAgent.props(store), "server-%06d".format(i))
     }
+    logger.info(s"started collectors.")
     DashboardingAgent.reset
     AuditingAgent.reset
     system.actorOf(DashboardingAgent.props(store, List("m3")))
     system.actorOf(AuditingAgent.props(store, epoch, List("m3")))
-    Thread.sleep((if(fast) 30 seconds else 5 minutes).toMillis)
+    Thread.sleep(plateauTime)
     system.shutdown
     logger.info(store + " average dashboard query time: " + DashboardingAgent.averageQueryTime + "ms, points:" + DashboardingAgent.resultCount.getCount)
     logger.info(store + " average audit query time: " + AuditingAgent.averageQueryTime + "ms, points:" + AuditingAgent.resultCount.getCount)
