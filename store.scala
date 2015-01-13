@@ -66,8 +66,7 @@ object Retry {
         return what()
       } catch {
         case t:Exception => {
-          log.info(t.toString)
-          log.info("will retry in " + pause + "ms")
+          log.info(s"$t [will retry in $pause]")
           Thread.sleep(pause.toMillis)
         }
       }

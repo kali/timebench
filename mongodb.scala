@@ -25,7 +25,7 @@ abstract class MongoDBContainer extends StoreInterface {
       .exec()
     docker.startContainerCmd(containerName).withNetworkMode("bridge")
       .withPortBindings(PortBinding.parse("27017:27017"),PortBinding.parse("28017:28017")).exec()
-    Retry(60, 3 second) { () => Http(s"http://$hostname:28017/").asString }
+    Retry(60, 10 second) { () => Http(s"http://$hostname:28017/").asString }
   }
 
   def diskDataPath = "/data"
