@@ -107,7 +107,7 @@ object Runner {
     val start = System.currentTimeMillis
     feed(store, epoch, now, (1 to servers).map ( i => "server-%06d".format(i)) )
     val time = System.currentTimeMillis - start
-    logger.debug(s"fed $servers server in " + (time/1000)+s"s du: " + store.diskUsage)
+    logger.info(s"fed $servers server in " + (time/1000)+s"s du: " + store.diskUsage)
     (1 to servers).foreach { i =>
       system.actorOf(CollectorAgent.props(store), "server-%06d".format(i))
     }
