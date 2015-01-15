@@ -83,7 +83,7 @@ object GraphiteStore extends StoreInterface {
     docker.startContainerCmd(containerName).withNetworkMode("bridge")
       .withPortBindings(PortBinding.parse("2003:2003"), PortBinding.parse("80:80"), PortBinding.parse("8080:8080")).exec()
     Retry(103, 10 seconds,logger) { () =>
-      logger.info("dockerhost is " + Environment.dockerHost)
+      logger.debug("dockerhost is " + Environment.dockerHost)
       new Socket(InetAddress.getByName(Environment.dockerHost), 2003).close()
     }
     pool = new org.apache.commons.pool2.impl.GenericObjectPool(factory)

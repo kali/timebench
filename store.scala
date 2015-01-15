@@ -27,9 +27,9 @@ trait StoreInterface {
   val logger = org.slf4j.LoggerFactory.getLogger(this.getClass)
   def startContainer {
     stopContainer
-    logger.info("starting")
+    logger.debug("starting")
     doStartContainer
-    logger.info("started")
+    logger.debug("started")
   }
   def doStartContainer
   def stopContainer {
@@ -66,7 +66,7 @@ object Retry {
         return what()
       } catch {
         case t:Exception => {
-          log.info(s"$t [will retry in $pause]")
+          log.debug(s"$t [will retry in $pause]")
           Thread.sleep(pause.toMillis)
         }
       }

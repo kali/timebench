@@ -47,7 +47,7 @@ object Runner {
   def main(args:Array[String]) {
     org.slf4j.bridge.SLF4JBridgeHandler.removeHandlersForRootLogger()
     org.slf4j.bridge.SLF4JBridgeHandler.install()
-    logger.info("starting bench. docker host: " + Environment.dockerHost)
+    logger.debug("starting bench. docker host: " + Environment.dockerHost)
     val scount:Int = Option(System.getenv("SERVERS")).map( _.toInt ).getOrElse(2)
     val dayCount:Int = Option(System.getenv("DAYS")).map( _.toInt ).getOrElse(1)
     val plateauTime:Long = Option(System.getenv("PLATEAU")).map( _.toInt ).getOrElse(30) * 1000
@@ -94,7 +94,7 @@ object Runner {
         } else {
           "..."
         }
-        logger.info(s"loaded: $percent% eta:$eta")
+        logger.debug(s"loaded: $percent% eta:$eta")
         lastMinute = currentMinute
       }
     }
@@ -107,11 +107,11 @@ object Runner {
     val start = System.currentTimeMillis
     feed(store, epoch, now, (1 to servers).map ( i => "server-%06d".format(i)) )
     val time = System.currentTimeMillis - start
-    logger.info(s"fed $servers server in " + (time/1000)+s"s du: " + store.diskUsage)
+    logger.debug(s"fed $servers server in " + (time/1000)+s"s du: " + store.diskUsage)
     (1 to servers).foreach { i =>
       system.actorOf(CollectorAgent.props(store), "server-%06d".format(i))
     }
-    logger.info(s"started collectors.")
+    logger.debug(s"started collectors.")
     DashboardingAgent.reset
     AuditingAgent.reset
     system.actorOf(DashboardingAgent.props(store, List("m3")))
