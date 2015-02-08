@@ -16,7 +16,7 @@ object MyApp extends Build {
         "org.slf4j" % "jul-to-slf4j" % "1.7.7",
         "ch.qos.logback" % "logback-core" % "1.1.2",
         "ch.qos.logback" % "logback-classic" % "1.1.2",
-        "com.github.docker-java" % "docker-java" % "0.10.4",
+        "com.github.docker-java" % "docker-java" % "0.10.5",
         "org.mongodb" % "casbah-core_2.11" % "2.7.4",
         "mysql" % "mysql-connector-java" % "5.1.34",
         "org.apache.commons" % "commons-dbcp2" % "2.0.1",

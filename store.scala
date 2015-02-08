@@ -47,6 +47,10 @@ trait StoreInterface {
   def exec(cmd:String):String = s"docker exec $containerName $cmd" !!
   def diskDataPath:String
   def diskUsage:Long = exec(s"du -bs $diskDataPath").split("""[ \t]""").head.toLong
+
+  def drain(is:java.io.InputStream) {
+    Iterator.continually (is.read).takeWhile(-1 !=).foreach( a => () )
+  }
 }
 
 object NotAStore extends StoreInterface {

@@ -76,7 +76,7 @@ object GraphiteStore extends StoreInterface {
   def doStartContainer {
     val image = "timebench-graphite"
     val is = docker.buildImageCmd(new java.io.File("docker/graphite")).withTag(image).exec()
-    Iterator.continually (is.read).takeWhile(-1 !=).foreach( a => () )
+    drain(is)
     docker.createContainerCmd(image).withName(containerName)
       .withExposedPorts(new ExposedPort(2003), new ExposedPort(80), new ExposedPort(8080))
       .exec()

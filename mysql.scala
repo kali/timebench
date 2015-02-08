@@ -35,9 +35,10 @@ object MysqlStore extends StoreInterface {
     import Environment.{ docker, dockerHost }
     import com.github.dockerjava.api.model._
     val image = "library/mysql:5.5"
-    docker.pullImageCmd(image).exec()
+    val is = docker.pullImageCmd(image).exec()
+    drain(is)
     docker.createContainerCmd(image).withName(containerName)
-      .withExposedPorts(new ExposedPort(3306))
+      .withExposedPorts(new ExposedPort(3305))
       .withEnv( "MYSQL_ROOT_PASSWORD=dapass","MYSQL_USER=bench",
                 "MYSQL_PASSWORD=bench","MYSQL_DATABASE=bench")
       .exec()

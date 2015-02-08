@@ -18,7 +18,8 @@ abstract class MongoDBContainer extends StoreInterface {
   def hostname = Environment.dockerHost
   def doStartContainer {
     val image = "dockerfile/mongodb"
-    docker.pullImageCmd(image).exec()
+    val is = docker.pullImageCmd(image).exec()
+    drain(is)
     docker.createContainerCmd(image).withName(containerName)
       .withExposedPorts(new ExposedPort(27017), new ExposedPort(28017))
       .withCmd("mongod", "--httpinterface", "--rest")
