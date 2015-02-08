@@ -20,26 +20,36 @@ object GraphiteStore extends StoreInterface {
   val url = "http://" + Environment.dockerHost
   val dateFormat = SafeSimpleDateFormat("HH:mm'_'yyyyMMdd")
 
-  val socketHolder = new java.lang.ThreadLocal[(Socket,Int)]()
-  def withSocket[T](f:Socket => T) {
-    if(socketHolder.get() == null || socketHolder.get()._2 == 64) {
-      socketHolder.set(new Socket(InetAddress.getByName(Environment.dockerHost), 2003),0)
+  val socketHolder = new java.lang.ThreadLocal[(Socket,Int,PrintStream)]()
+  def withSocket[T](f:PrintStream => T) {
+    var s = socketHolder.get()
+    if(s == null || !s._1.isConnected()) {
+      val so = new Socket(InetAddress.getByName(Environment.dockerHost), 2003)
+      socketHolder.set((so,0,new PrintStream(so.getOutputStream)))
+      s = socketHolder.get()
     }
-    socketHolder.set(socketHolder.get()._1, socketHolder.get()._2 + 1)
-    f(socketHolder.get()._1)
+    if(s == null || !s._1.isConnected()) {
+      socketHolder.set(s._1, s._2 + 1, s._3)
+    }
+    try {
+      f(s._3)
+    } catch {
+      case _:Exception => socketHolder.set(null)
+    }
+    if(s._2 >= 64) {
+      s._1.close
+      socketHolder.set(null)
+    }
   }
 
   def storeValues(timestamp:Date, values:Seq[(Server,Probe,Key,Value)]) {
-    withSocket { s =>
-      println("connected ? : " + s.isConnected);
-      val out = new PrintStream(s.getOutputStream())
+    withSocket { out =>
       val date = timestamp.getTime() / 1000
       values.foreach {
         case (s,p,k,v) => { out.println(s"10sec.$s.$p.$k $v $date")
-          out.flush()
         }
       }
-      out.close();
+      out.flush()
     }
   }
 
