@@ -16,29 +16,17 @@ import org.json4s._
 import org.json4s.JsonDSL._
 import org.json4s.jackson.JsonMethods._
 
-import org.apache.commons.pool2._
-
 object GraphiteStore extends StoreInterface {
   val url = "http://" + Environment.dockerHost
   val dateFormat = SafeSimpleDateFormat("HH:mm'_'yyyyMMdd")
 
-  val factory:PooledObjectFactory[Socket] = new PooledObjectFactory[Socket] {
-    def activateObject(x:PooledObject[Socket]): Unit = {}
-    def destroyObject(x:PooledObject[Socket]): Unit = x.getObject.close
-    def makeObject():PooledObject[Socket] = {
-      new org.apache.commons.pool2.impl.DefaultPooledObject(
-        new Socket(InetAddress.getByName(Environment.dockerHost), 2003)
-      )
-    }
-    def passivateObject(x:PooledObject[Socket]): Unit = {}
-    def validateObject(x:PooledObject[Socket]): Boolean = x.getObject.isConnected
-  }
-
-  var pool:ObjectPool[Socket] = null
-
+  val socketHolder = new java.lang.ThreadLocal[(Socket,Int)]()
   def withSocket[T](f:Socket => T) {
-    val s = pool.borrowObject
-    try { f(s) } finally { if(s!=null) pool.returnObject(s) }
+    if(socketHolder.get() == null || socketHolder.get()._2 == 64) {
+      socketHolder.set(new Socket(InetAddress.getByName(Environment.dockerHost), 2003),0)
+    }
+    socketHolder.set(socketHolder.get()._1, socketHolder.get()._2 + 1)
+    f(socketHolder.get()._1)
   }
 
   def storeValues(timestamp:Date, values:Seq[(Server,Probe,Key,Value)]) {
@@ -46,7 +34,9 @@ object GraphiteStore extends StoreInterface {
       val out = new PrintStream(s.getOutputStream())
       val date = timestamp.getTime() / 1000
       values.foreach {
-        case (s,p,k,v) => out.println(s"10sec.$s.$p.$k $v $date")
+        case (s,p,k,v) => { out.println(s"10sec.$s.$p.$k $v $date")
+          out.flush()
+        }
       }
     }
   }
@@ -58,8 +48,7 @@ object GraphiteStore extends StoreInterface {
           "until" -> dateFormat.format(stop),
           "target" -> s"10sec.*.$metric.*",
           "format" -> "json")
-    logger.debug("query: " + req)
-    println(req);
+    logger.debug("query: " + req.url)
     val resp = parse(StringInput(req.asString.body))
     val result = resp.asInstanceOf[JArray].values.flatMap {
       case obj:Map[String,_] =>
@@ -88,14 +77,9 @@ object GraphiteStore extends StoreInterface {
       logger.debug("dockerhost is " + Environment.dockerHost)
       new Socket(InetAddress.getByName(Environment.dockerHost), 2003).close()
     }
-    pool = new org.apache.commons.pool2.impl.GenericObjectPool(factory)
   }
 
   override def stopContainer = {
-    if(pool != null) {
-      pool.close
-      pool = null
-    }
     super.stopContainer
   }
 

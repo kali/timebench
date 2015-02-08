@@ -52,9 +52,11 @@ object Runner {
     val store = InfluxDBStore
     //val store = NotAStore
     List(
+/*
       MysqlStore,
       InfluxDBStore,
       IndexedMongoDBStore,
+*/
       GraphiteStore,
       NotAStore
     ).foreach { store =>
