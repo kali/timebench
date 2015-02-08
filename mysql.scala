@@ -27,8 +27,7 @@ object MysqlStore extends StoreInterface {
     poolableConnectionFactory.setPool(connectionPool)
     new PoolingDataSource(connectionPool)
   }
-  val dateFormat = new java.text.SimpleDateFormat("yyyy-MM-dd' 'HH:mm:ss")
-  dateFormat.setTimeZone(java.util.TimeZone.getTimeZone("UTC"))
+  val dateFormat = SafeSimpleDateFormat("yyyy-MM-dd' 'HH:mm:ss")
 
   def doStartContainer {
     import javax.management.ObjectName

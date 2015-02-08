@@ -26,8 +26,6 @@ object Environment {
   val dockerHostEnv = Option(System.getenv().get("DOCKER_HOST")).getOrElse("tcp://127.0.0.1:2376")
   val dockerHost = dockerHostEnv.drop(6).dropRight(5)
   val docker = DockerClientBuilder.getInstance().build()
-  val dateFormat = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm'Z'")
-  dateFormat.setTimeZone(java.util.TimeZone.getTimeZone("UTC"))
   val csvDir = new java.io.File("target/metrics/")
   csvDir.mkdirs()
   val reporter = CsvReporter.forRegistry(Environment.metrics)

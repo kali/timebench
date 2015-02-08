@@ -15,8 +15,7 @@ import org.json4s.jackson.JsonMethods._
 
 object InfluxDBStore extends StoreInterface {
   def hostname = Environment.dockerHost
-  val dateFormat = new java.text.SimpleDateFormat("yyyy-MM-dd' 'HH:mm:ss")
-  dateFormat.setTimeZone(java.util.TimeZone.getTimeZone("UTC"))
+  val dateFormat = SafeSimpleDateFormat("yyyy-MM-dd' 'HH:mm:ss")
 
   val request = Http(s"http://$hostname:8086/db/test/series?u=test&p=test&time_precision=s")
   def storeValues(timestamp:Date, values:Seq[(Server,Probe,Key,Value)]) {
@@ -33,13 +32,13 @@ object InfluxDBStore extends StoreInterface {
                     .format(dateFormat.format(start),
                             dateFormat.format(stop), probe))
       .method("GET")
-    logger.debug { "start:" + start + " -> " + dateFormat.format(start) }
-    logger.debug { "stop :" + stop  + " -> " + dateFormat.format(stop) }
-    logger.debug { s"query:$req" }
+    //logger.debug { "start:" + start + " -> " + dateFormat.format(start) }
+    //logger.debug { "stop :" + stop  + " -> " + dateFormat.format(stop) }
+    //logger.debug { s"query:$req" }
     val resp = parse(StringInput(req.asString.body))
     if(resp.values.asInstanceOf[List[_]].size == 0)
       return List()
-    logger.debug { " --- > " + resp.values.asInstanceOf[List[_]].size }
+    //logger.debug { " --- > " + resp.values.asInstanceOf[List[_]].size }
     val columns = (resp(0) \ "columns").values.asInstanceOf[List[_]]
     val iTime = columns.indexOf("time")
     val iServer = columns.indexOf("server")

@@ -16,6 +16,6 @@
     <appender-ref ref="STDERR" />
   </root>
 
-  <logger name="bench" level="INFO" />
+  <logger name="bench" level="DEBUG" />
 
 </configuration>

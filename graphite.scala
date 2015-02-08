@@ -20,8 +20,7 @@ import org.apache.commons.pool2._
 
 object GraphiteStore extends StoreInterface {
   val url = "http://" + Environment.dockerHost
-  val dateFormat = new java.text.SimpleDateFormat("HH:mm'_'yyyyMMdd")
-  dateFormat.setTimeZone(java.util.TimeZone.getTimeZone("UTC"))
+  val dateFormat = SafeSimpleDateFormat("HH:mm'_'yyyyMMdd")
 
   val factory:PooledObjectFactory[Socket] = new PooledObjectFactory[Socket] {
     def activateObject(x:PooledObject[Socket]): Unit = {}
@@ -60,8 +59,9 @@ object GraphiteStore extends StoreInterface {
           "target" -> s"10sec.*.$metric.*",
           "format" -> "json")
     logger.debug("query: " + req)
+    println(req);
     val resp = parse(StringInput(req.asString.body))
-    resp.asInstanceOf[JArray].values.flatMap {
+    val result = resp.asInstanceOf[JArray].values.flatMap {
       case obj:Map[String,_] =>
         val Array(_,server,_,key) = obj("target").toString.split('.')
         obj("datapoints").asInstanceOf[List[List[_]]].flatMap {
@@ -69,6 +69,8 @@ object GraphiteStore extends StoreInterface {
           case _ => None
         }
     }
+    println(result.size)
+    result
   }
 
   import Environment.docker

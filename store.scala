@@ -23,6 +23,18 @@ object Types {
 }
 import Types._
 
+case class SafeSimpleDateFormat(val formatString:String) {
+  val formatter = new java.lang.ThreadLocal[java.text.SimpleDateFormat]()
+  def format(d:Date) = {
+    if(formatter.get() == null) {
+      val dateFormat = new java.text.SimpleDateFormat(formatString)
+      dateFormat.setTimeZone(java.util.TimeZone.getTimeZone("UTC"))
+      formatter.set(dateFormat)
+    }
+    formatter.get().format(d)
+  }
+}
+
 trait StoreInterface {
   val logger = org.slf4j.LoggerFactory.getLogger(this.getClass)
   def startContainer {
