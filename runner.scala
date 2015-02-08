@@ -94,7 +94,7 @@ object Runner {
         } else {
           "..."
         }
-        logger.debug(s"loaded: $percent% eta:$eta")
+        logger.info(s"loaded: $percent% eta:$eta")
         lastMinute = currentMinute
       }
     }
@@ -102,6 +102,7 @@ object Runner {
 
   def liveDashboardBench(store:StoreInterface, servers:Int, dayCount:Int, plateauTime:Long) {
     logger.info(s"store:$store servers:$servers days:$dayCount plateau:" + plateauTime / 1000 + "s")
+    logger.info(s"before feeding du: " + store.diskUsage)
     val system = ActorSystem("live")
     val epoch = ((System.currentTimeMillis - (dayCount day).toMillis) / (1 day).toMillis).toLong * (1 day).toMillis
     val start = System.currentTimeMillis

@@ -31,6 +31,7 @@ object GraphiteStore extends StoreInterface {
 
   def storeValues(timestamp:Date, values:Seq[(Server,Probe,Key,Value)]) {
     withSocket { s =>
+      println("connected ? : " + s.isConnected);
       val out = new PrintStream(s.getOutputStream())
       val date = timestamp.getTime() / 1000
       values.foreach {
@@ -38,6 +39,7 @@ object GraphiteStore extends StoreInterface {
           out.flush()
         }
       }
+      out.close();
     }
   }
 
